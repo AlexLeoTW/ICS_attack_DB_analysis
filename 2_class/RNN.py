@@ -15,6 +15,7 @@ from keras.models import Sequential
 from keras.layers.core import Dense
 from keras.layers.recurrent import SimpleRNN
 from keras.callbacks import EarlyStopping
+from sklearn.model_selection import train_test_split
 
 # read file
 print('===== read file =====')
@@ -95,49 +96,27 @@ x, y = to_xy(df,'marker')
 print('x.shape: {}, {}'.format(x.shape, type(x)))
 print('y.shape: {}, {}'.format(y.shape, type(y)))
 
-# Create a test/train split.  20% test
-def train_valid_gen_factory(x, y, batch_size=BATCH_SIZE, step_size=STEP_SIZE, validation_split=0.2):
+# Create time sequences of x, y with time_step
+print('===== create sequences =====')
+def to_sequences(x, y, step_size=STEP_SIZE):
     if x.shape[0] != y.shape[0]:
         return None, None
 
     step_count = x.shape[0] - step_size + 1
-    random_indexes = random.sample(range(0, step_count), k=step_count)        # shuffle ( 0 ~ step_count )
-    # random_indexes = list(range(0, step_count))
-    slice_index = math.ceil(len(random_indexes) * validation_split)
-    valid_indexes = random_indexes[ :slice_index]
-    train_indexes = random_indexes[slice_index: ]
-    valid_size = len(valid_indexes)
-    train_size = len(train_indexes)
+    x_seq = np.zeros((step_count, step_size, x.shape[1]))
+    y_seq = np.zeros((step_count, step_size, y.shape[1]))
+    for i in range(step_count):
+        x_seq[i] = x[i:i+step_size]
+        y_seq[i] = y[i:i+step_size]
 
-    def gen_batch(x, y, index_list, batch_size, step_size):
-        while True:
-            random.shuffle(index_list)
-            x_batch = np.zeros((batch_size, step_size, x.shape[1]))
-            y_batch = np.zeros((batch_size, step_size, y.shape[1]))
+    return x_seq, y_seq
 
-            while len(index_list) > 0:
-                local_index_list = list(index_list)
-                start_index = local_index_list.pop()
+x_seq, y_seq = to_sequences(x, y, step_size=STEP_SIZE)
 
-                for count in range(0, min(len(local_index_list), batch_size)):
-                    x_batch[count] = x[start_index : start_index + step_size]
-                    y_batch[count] = y[start_index : start_index + step_size]
-                    # print(y_batch)
-
-                yield x_batch, y_batch
-
-    valid_gen = gen_batch(x, y, valid_indexes, batch_size, step_size)
-    train_gen = gen_batch(x, y, train_indexes, batch_size, step_size)
-
-    return train_gen, valid_gen, train_size, valid_size
-
-print('batch_size = {}'.format(BATCH_SIZE))
+# Create a test/train split.  20% test
+x_train, x_test, y_train, y_test = train_test_split(x_seq, y_seq,
+    test_size=0.2, random_state=42)
 print('step_size = {}'.format(STEP_SIZE))
-train_gen, valid_gen, train_size, valid_size = train_valid_gen_factory(x, y,
-    batch_size = BATCH_SIZE,
-    step_size = STEP_SIZE,
-    validation_split = 0.1
-)
 
 # RNN stuff
 print('===== setup RNN =====')
@@ -148,15 +127,12 @@ print('===== setup RNN =====')
 monitor = EarlyStopping(monitor='val_loss', min_delta=1e-3, patience=5, verbose=1, mode='auto')
 
 model = Sequential()
-model.add(SimpleRNN(units=50, input_shape=(STEP_SIZE, x.shape[1]), return_sequences = True))
+model.add(SimpleRNN(units=50, input_shape=(STEP_SIZE, x.shape[1]),
+    return_sequences = True))
 model.add(Dense(units=2, kernel_initializer='normal', activation='softmax'))
 model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-model.fit_generator(
-    train_gen,
-    validation_data = valid_gen,
-    epochs = 20,
-    steps_per_epoch = train_size,
-    validation_steps = valid_size,
-    callbacks=[monitor]
-)
+model.fit(x_train, y_train,
+    validation_data=(x_test,y_test),
+    callbacks=[monitor],
+    verbose=1, epochs=200)
 model.summary()

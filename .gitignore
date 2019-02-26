@@ -1,2 +1,7 @@
 # some code snippets
 2_class/clipboard.py
+test.py
+
+# pycache
+2_class/__pycache__/
+__pycache__/
