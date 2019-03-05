@@ -7,7 +7,8 @@ def print_useage():
     print('  -u,    --units     recurrent neural network size')
     print('  -m,    --model     save trainned moldel')
     print('  -l,    --log       save detailed trainning log (.csv file)')
-    print('  -a,    --summary   append trainning statistics (.csv file)')
+    print('  -a,    --summary   save trainning statistics (.csv file)')
+    print('  -d,    --drop      drop duplicates logs ( for summary)')
 
 def parse_argv(argv, ann_name):
     options = {
@@ -16,12 +17,13 @@ def parse_argv(argv, ann_name):
         'dataset_path': None,
         'model_path': None,
         'log_path': None,
-        'statistics_path': None
+        'statistics_path': None,
+        'drop_duplicates': False
     }
 
     try:
         opts, args = getopt.getopt(argv[1:], 'hs:u:m:l:a:',
-            ['help', 'step=', 'units=', 'model=', 'log=', 'summary='])
+            ['help', 'step=', 'units=', 'model=', 'log=', 'summary=', 'drop'])
     except getopt.GetoptError as err:
         print(err)
 
@@ -39,6 +41,8 @@ def parse_argv(argv, ann_name):
             options['log_path'] = arg
         elif opt in ('-a', '--summary'):
             options['statistics_path'] = arg
+        elif opt in ('-d', '--drop'):
+            options['drop_duplicates'] = True
 
     if len(args) < 1:
         print('Please specify source (dataset) file')

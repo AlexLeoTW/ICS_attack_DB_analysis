@@ -1,6 +1,8 @@
 import os
 import pandas as pd
 import numpy as np
+from keras.models import Sequential
+from sklearn import metrics
 
 # read CSVs in a directory into a single DataFrame
 def batch_read_csv(dirpath='.'):
@@ -95,3 +97,80 @@ def to_sequences(x, y, step_size):
         y_seq[i] = y[i:i+step_size]
 
     return x_seq, y_seq
+
+# Caculate: auc_score, reca_score, prec_score, f1_score
+def measure_accuracy(model, x_test, y_test):
+    pred = model.predict(x_test)
+    pred = np.argmax(pred,axis=2)[:,-1]
+    y_eval = np.argmax(y_test,axis=2)[:,-1]
+
+    auc_score = metrics.accuracy_score(y_eval, pred)
+    # print('Accuracy =', auc_score*100)
+
+    reca_score = metrics.recall_score(y_eval, pred)
+    # print('Recall =', reca_score*100)
+
+    prec_score = metrics.precision_score(y_eval, pred)
+    # print('Precision =', prec_score*100)
+
+    f1_score = metrics.f1_score(y_eval, pred)
+    # print('F-score =', f1_score)
+
+    return auc_score, reca_score, prec_score, f1_score
+
+def dir_create_if_not_exist(file_path):
+    if not os.path.exists(os.path.dirname(file_path)):
+        os.makedirs(os.path.dirname(file_path))
+
+def save_results(ann_name, options, model=None, validation_data=None, fit_result=None, train_time=np.nan):
+    if 'model_path' in options:
+        if not isinstance(model, Sequential):
+            raise ValueError('"model" must be an instance of keras.model.Sequential')
+
+        print('saving model "{}"...'.format(os.path.basename(options['model_path'])))
+        dir_create_if_not_exist(options['model_path'])
+        model.save(options['model_path'])
+
+    if 'log_path' in options:
+        print('saving epochs log "{}"...'.format(os.path.basename(options['log_path'])))
+        dir_create_if_not_exist(options['log_path'])
+        log_csv = open(options['log_path'], "w")
+        log_csv.write(pd.DataFrame(fit_result.history).to_csv())
+
+
+    if 'statistics_path' in options:
+        if not isinstance(model, Sequential):
+            raise ValueError('"model" must be an instance of keras.model.Sequential')
+        if len(validation_data) < 2:
+            raise ValueError('"validation_data" must contain x_test and y_test')
+
+        x_test, y_test = validation_data
+        auc_score, reca_score, prec_score, f1_score = measure_accuracy(model, x_test, y_test)
+        epochs = len(fit_result.history['val_acc']) if fit_result != None else np.nan
+        last_val_loss = fit_result.history['val_loss'][-1] if fit_result != None else np.nan
+        last_val_acc = fit_result.history['val_acc'][-1] if fit_result != None else np.nan
+        last_loss = fit_result.history['loss'][-1] if fit_result != None else np.nan
+        last_acc = fit_result.history['acc'][-1] if fit_result != None else np.nan
+
+        statistics_columns = ['ann_name', 'step_size', 'units',
+            'auc_score', 'reca_score', 'prec_score', 'f1_score',
+            'train_time', 'epochs',
+            'last_val_loss', 'last_val_acc', 'last_loss', 'last_acc']
+
+        history_statistics = pd.DataFrame(columns=statistics_columns)
+        if os.path.isfile(options['statistics_path']):
+            history_statistics = pd.read_csv(options['statistics_path'])
+
+        statistics = pd.DataFrame([[ann_name, options['step_size'], options['units'],
+            auc_score, reca_score, prec_score, f1_score,
+            train_time, epochs,
+            last_val_loss, last_val_acc, last_loss, last_acc]], columns=statistics_columns)
+
+        history_statistics = history_statistics.append(statistics, ignore_index=True)
+        if options['drop_duplicates']:
+            history_statistics.drop_duplicates(subset=['ann_name', 'step_size', 'units'], inplace=True, keep='last')
+
+        print('saving history statistics "{}"...'.format(os.path.basename(options['statistics_path'])))
+        dir_create_if_not_exist(options['statistics_path'])
+        statistics_csv = open(options['statistics_path'], "w")
+        statistics_csv.write(history_statistics.to_csv(index=False))
