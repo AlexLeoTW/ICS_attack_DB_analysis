@@ -2,27 +2,25 @@
 #            / Dataset 1: Power System Datasets
 # https://sites.google.com/a/uah.edu/tommy-morris-uah/ics-data-sets
 
-DIR_PATH = '../../2_classes/'
-STEP_SIZE = 20
-BATCH_SIZE = 5
+ANN_NAME = 'LSTM'
 VALIDATION_SPLIT = 0.2
-# shape = BATCH_SIZE, STEP_SIZE, columns
 
-import os
+import os, sys, time
 import pandas as pd
 import encoder as enc
 import common as common
+import cmdargv as cmdargv
 from keras.models import Sequential
 from keras.layers.core import Dense
 from keras.layers.recurrent import LSTM
 from keras.callbacks import EarlyStopping
 from sklearn.model_selection import train_test_split
 
+options = cmdargv.parse_argv(sys.argv, ANN_NAME)
+
 # read file
 print('===== read file =====')
-dirpath = os.path.abspath(os.path.dirname(__file__))
-dirpath = os.path.abspath(os.path.join(dirpath, DIR_PATH))
-df, files = common.batch_read_csv(dirpath)
+df = pd.read_csv(options['dataset_path'])
 print(df.info())
 
 # dealing with: NaN, ∞, -∞
@@ -51,8 +49,8 @@ print('y.shape: {}, {}'.format(y.shape, type(y)))
 
 # Create time sequences of x, y with time_step
 print('===== create sequences =====')
-print('step_size = {}'.format(STEP_SIZE))
-x_seq, y_seq = common.to_sequences(x, y, step_size=STEP_SIZE)
+print('step_size = {}'.format(options['step_size']))
+x_seq, y_seq = common.to_sequences(x, y, step_size=options['step_size'])
 
 # Create a test/train split.  20% test
 print('validation_split = {}%'.format(VALIDATION_SPLIT * 100))
@@ -64,12 +62,27 @@ print('===== setup LSTM =====')
 monitor = EarlyStopping(monitor='val_loss', min_delta=1e-3, patience=5, verbose=1, mode='auto')
 
 model = Sequential()
-model.add(LSTM(units=50, input_shape=(STEP_SIZE, x.shape[1]),
+model.add(LSTM(units=options['units'], input_shape=(options['step_size'], x.shape[1]),
     return_sequences = True))
 model.add(Dense(units=2, kernel_initializer='normal', activation='softmax'))
 model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-model.fit(x_train, y_train,
-    validation_data=(x_test,y_test),
-    callbacks=[monitor],
-    verbose=1, epochs=200)
+start_time = time.time()    # -------------------------------------------------┐
+result = model.fit(x_train, y_train, #                                         │
+    validation_data=(x_test,y_test), #              train_time                 │
+    callbacks=[monitor],    #                                                  │
+    verbose=1, epochs=300)  #                                                  │
+train_time = time.time() - start_time   # -------------------------------------┘
 model.summary()
+
+print('train_time = {}s'.format(train_time))
+
+# write files
+print('===== write files =====')
+common.save_results(
+    ANN_NAME,
+    options=options,
+    model=model,
+    validation_data=(x_test, y_test),
+    fit_result=result,
+    train_time=train_time
+)
