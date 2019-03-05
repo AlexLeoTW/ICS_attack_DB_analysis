@@ -5,8 +5,7 @@
 ANN_NAME = 'SimpleRNN'
 VALIDATION_SPLIT = 0.2
 
-import os, random, math, sys, time
-import numpy as np
+import os, sys, time
 import pandas as pd
 import encoder as enc
 import common as common
@@ -58,8 +57,8 @@ print('validation_split = {}%'.format(VALIDATION_SPLIT * 100))
 x_train, x_test, y_train, y_test = train_test_split(x_seq, y_seq,
     test_size=VALIDATION_SPLIT, random_state=42)
 
-# RNN stuff
-print('===== setup RNN =====')
+# SimpleRNN stuff
+print('===== setup SimpleRNN =====')
 monitor = EarlyStopping(monitor='val_loss', min_delta=1e-3, patience=5, verbose=1, mode='auto')
 
 model = Sequential()
