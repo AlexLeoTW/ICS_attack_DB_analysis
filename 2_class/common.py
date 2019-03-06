@@ -147,6 +147,7 @@ def save_results(ann_name, options, model=None, validation_data=None, fit_result
         x_test, y_test = validation_data
         auc_score, reca_score, prec_score, f1_score = measure_accuracy(model, x_test, y_test)
         epochs = len(fit_result.history['val_acc']) if fit_result != None else np.nan
+        avg_epoch_time = train_time / epochs
         last_val_loss = fit_result.history['val_loss'][-1] if fit_result != None else np.nan
         last_val_acc = fit_result.history['val_acc'][-1] if fit_result != None else np.nan
         last_loss = fit_result.history['loss'][-1] if fit_result != None else np.nan
@@ -154,7 +155,7 @@ def save_results(ann_name, options, model=None, validation_data=None, fit_result
 
         statistics_columns = ['ann_name', 'step_size', 'units',
             'auc_score', 'reca_score', 'prec_score', 'f1_score',
-            'train_time', 'epochs',
+            'train_time', 'epochs', 'avg_epoch_time',
             'last_val_loss', 'last_val_acc', 'last_loss', 'last_acc']
 
         history_statistics = pd.DataFrame(columns=statistics_columns)
@@ -163,7 +164,7 @@ def save_results(ann_name, options, model=None, validation_data=None, fit_result
 
         statistics = pd.DataFrame([[ann_name, options['step_size'], options['units'],
             auc_score, reca_score, prec_score, f1_score,
-            train_time, epochs,
+            train_time, epochs, avg_epoch_time,
             last_val_loss, last_val_acc, last_loss, last_acc]], columns=statistics_columns)
 
         history_statistics = history_statistics.append(statistics, ignore_index=True)
