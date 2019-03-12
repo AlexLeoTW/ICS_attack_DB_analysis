@@ -24,6 +24,13 @@ def batch_read_csv(dirpath='.'):
 
     return df, files
 
+# exclude cols by regex (or name)
+def dropp_columns_regex(df, regex):
+    drop_columns = set(df.filter(regex=regex, axis=1).columns)
+    print('drop_columns = {}'.format(drop_columns))
+    selected_columns = set(df.columns) - drop_columns
+    df = df[selected_columns]
+
 # dealing with: NaN, ∞, -∞
 def cleanup(df):
     old_columns = df.columns

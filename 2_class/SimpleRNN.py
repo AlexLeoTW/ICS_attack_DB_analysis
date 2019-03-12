@@ -22,6 +22,7 @@ options = cmdargv.parse_argv(sys.argv, ANN_NAME)
 print('===== read file =====')
 df = pd.read_csv(options['dataset_path'])
 print(df.info())
+common.dropp_columns_regex(df, options['exclude'])
 
 # dealing with: NaN, ∞, -∞
 print('===== cleanup =====')
