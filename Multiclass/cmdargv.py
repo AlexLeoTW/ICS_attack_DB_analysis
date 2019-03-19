@@ -26,7 +26,7 @@ def parse_argv(argv, ann_name):
     if os.path.isfile(args.dataset):
 
         if args.model_path == None:
-            args.model_path = '{}/{}_Size{}_Units{}'.format(args.dataset[:-4], ann_name, args.step_size, args.units)
+            args.model_path = '{}/{}_Size{}_Units{}.h5'.format(args.dataset[:-4], ann_name, args.step_size, args.units)
 
         if args.log_path == None:
             args.log_path = '{}/{}_Size{}_Units{}.csv'.format(args.dataset[:-4], ann_name, args.step_size, args.units)
@@ -36,7 +36,7 @@ def parse_argv(argv, ann_name):
     else:
 
         if args.model_path == None:
-            args.model_path = '{}_{}_Size{}_Units{}'.format(args.dataset, ann_name, args.step_size, args.units)
+            args.model_path = '{}_{}_Size{}_Units{}.h5'.format(args.dataset, ann_name, args.step_size, args.units)
 
         if args.log_path == None:
             args.log_path = '{}_{}_Size{}_Units{}.csv'.format(args.dataset, ann_name, args.step_size, args.units)
