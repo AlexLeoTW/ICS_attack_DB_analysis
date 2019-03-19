@@ -10,10 +10,10 @@ import pandas as pd
 import encoder as enc
 import common as common
 import cmdargv as cmdargv
-from keras.models import Sequential
+from keras.models import Sequential, load_model
 from keras.layers.core import Dense
 from keras.layers.recurrent import SimpleRNN
-from keras.callbacks import EarlyStopping
+from keras.callbacks import EarlyStopping, ModelCheckpoint
 from sklearn.model_selection import train_test_split
 
 options = cmdargv.parse_argv(sys.argv, ANN_NAME)
@@ -60,7 +60,10 @@ x_train, x_test, y_train, y_test = train_test_split(x_seq, y_seq,
 
 # SimpleRNN stuff
 print('===== setup SimpleRNN =====')
-monitor = EarlyStopping(monitor='val_loss', min_delta=1e-3, patience=5, verbose=1, mode='auto')
+callback_monitor='val_loss'
+earlyStopping = EarlyStopping(monitor=callback_monitor, min_delta=1e-3, patience=20, mode='auto', verbose=1)
+modelCheckpoint = ModelCheckpoint(filepath=options.model_path, monitor=callback_monitor, mode='auto', save_best_only=True, verbose=1)
+common.dir_create_if_not_exist(options.model_path)
 
 model = Sequential()
 model.add(SimpleRNN(units=options.units, input_shape=(options.step_size, x.shape[1]),
@@ -70,7 +73,7 @@ model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accur
 start_time = time.time()    # -------------------------------------------------┐
 result = model.fit(x_train, y_train, #                                         │
     validation_data=(x_test,y_test), #              train_time                 │
-    callbacks=[monitor],    #                                                  │
+    callbacks=[earlyStopping, modelCheckpoint],    #                           │
     verbose=1, epochs=300)  #                                                  │
 train_time = time.time() - start_time   # -------------------------------------┘
 model.summary()
@@ -79,6 +82,7 @@ print('train_time = {}s'.format(train_time))
 
 # write files
 print('===== write files =====')
+model = load_model(options.model_path)
 common.save_results(
     ANN_NAME,
     options=options,
