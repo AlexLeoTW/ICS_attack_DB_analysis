@@ -1,83 +1,54 @@
-import sys, getopt, os
-
-def print_useage():
-    print('useage: ' + __file__ + ' -s <step_size> -u <unit> <dataset path>')
-    print('  -h,    --help      print this help message')
-    print('  -s,    --step      step size for trainning')
-    print('  -u,    --units     recurrent neural network size')
-    print('  -m,    --model     save trainned moldel')
-    print('  -l,    --log       save detailed trainning log (.csv file)')
-    print('  -a,    --summary   save trainning statistics (.csv file)')
-    print('  -d,    --drop      drop duplicates logs (for summary)')
-    print('  -x,    --exclude   exclude columns (support RegEx)')
+import argparse, sys, os
 
 def parse_argv(argv, ann_name):
-    options = {
-        'step_size': None,
-        'units': None,
-        'dataset_path': None,
-        'model_path': None,
-        'log_path': None,
-        'statistics_path': None,
-        'drop_duplicates': False,
-        'exclude': None
-    }
+    parser = argparse.ArgumentParser()
 
-    try:
-        opts, args = getopt.getopt(argv[1:], 'hs:u:m:l:a:dx:',
-            ['help', 'step=', 'units=', 'model=', 'log=', 'summary=', 'drop', 'exclude='])
-    except getopt.GetoptError as err:
-        print(err)
+    parser.add_argument('dataset', help='path to dataset (.csv file)')
+    # parser.add_argument('-h', '--help', help='print this help message')
+    parser.add_argument('-s', '--step', help='step size for trainning',
+        dest='step_size', type=int, required=True)
+    parser.add_argument('-u', '--units', help='recurrent neural network size',
+        dest='units', type=int, required=True)
+    parser.add_argument('-m', '--model', help='save trainned moldel',
+        dest='model_path')
+    parser.add_argument('-l', '--log', help='save detailed trainning log (.csv file)',
+        dest='log_path')
+    parser.add_argument('-a', '--statistics', help='save / append trainning statistics (.csv file)',
+        dest='statistics_path')
+    parser.add_argument('-d', '--drop', help='drop duplicates logs (in statistics file)',
+        dest='drop_duplicates', action='store_true')
+    parser.add_argument('-x', '--exclude', help='exclude columns (support RegEx)',
+        dest='exclude')
 
-    for opt, arg in opts:
-        if opt in ('-h', '--help'):
-            print_useage()
-            sys.exit(0)
-        elif opt in ('-s', '--step'):
-            options['step_size'] = int(arg)
-        elif opt in ('-u', '--units'):
-            options['units'] = int(arg)
-        elif opt in ('-m', '--model'):
-            options['model_path'] = arg
-        elif opt in ('-l', '--log'):
-            options['log_path'] = arg
-        elif opt in ('-a', '--summary'):
-            options['statistics_path'] = arg
-        elif opt in ('-d', '--drop'):
-            options['drop_duplicates'] = True
-        elif opt in ('-x', '--exclude'):
-            options['exclude'] = arg
+    # args = parser.parse_args(['--step=15', '--unit=30', '../2_classes/data1.csv'])
+    args = parser.parse_args()
 
-    if len(args) < 1:
-        print('Please specify source (dataset) file')
-        print_useage()
-        sys.exit(1)
+    if os.path.isfile(args.dataset):
 
-    if os.path.isfile(args[0]):
-        # single file mode
-        options['dataset_path'] = args[0]
-        options['model_path'] = '{}/{}_Sise{}_Units{}'.format(options['dataset_path'][:-4], ann_name, options['step_size'], options['units']) if not isinstance(options['model_path'], str) else options['model_path']
-        options['log_path'] = '{}/{}_Sise{}_Units{}.csv'.format(options['dataset_path'][:-4], ann_name, options['step_size'], options['units']) if not isinstance(options['log_path'], str) else options['log_path']
-        options['statistics_path'] = '{}/statistics.csv'.format(options['dataset_path'][:-4], ann_name, options['step_size'], options['units']) if not isinstance(options['statistics_path'], str) else options['statistics_path']
+        if args.model_path == None:
+            args.model_path = '{}/{}_Size{}_Units{}.h5'.format(args.dataset[:-4], ann_name, args.step_size, args.units)
+
+        if args.log_path == None:
+            args.log_path = '{}/{}_Size{}_Units{}.csv'.format(args.dataset[:-4], ann_name, args.step_size, args.units)
+
+        if args.statistics_path == None:
+            args.statistics_path = '{}/statistics.csv'.format(args.dataset[:-4])
     else:
-        # folder mode
-        options['dataset_path'] = args[0]
-        options['model_path'] = '{}_{}_Sise{}_Units{}'.format(options['dataset_path'], ann_name, options['step_size'], options['units']) if not isinstance(options['model_path'], str) else options['model_path']
-        options['log_path'] = '{}_{}_Sise{}_Units{}.csv'.format(options['dataset_path'], ann_name, options['step_size'], options['units']) if not isinstance(options['log_path'], str) else options['log_path']
-        options['statistics_path'] = '{}_statistics.csv'.format(options['dataset_path'], ann_name, options['step_size'], options['units']) if not isinstance(options['statistics_path'], str) else options['statistics_path']
 
-    for opt_key in options:
-        if options[opt_key] == None:
-            print('{} is not specified'.format(opt_key))
-            print_useage()
-            sys.exit(1)
+        if args.model_path == None:
+            args.model_path = '{}_{}_Size{}_Units{}.h5'.format(args.dataset, ann_name, args.step_size, args.units)
 
-    return options
+        if args.log_path == None:
+            args.log_path = '{}_{}_Size{}_Units{}.csv'.format(args.dataset, ann_name, args.step_size, args.units)
+
+        if args.statistics_path == None:
+            args.statistics_path = '{}_statistics.csv'.format(args.dataset)
+
+    return args
 
 def main(argv):
     options = parse_argv(argv, 'Test')
-    for key in options:
-        print('{}, {}'.format(key, options[key]))
+    print(options)
 
 if __name__ == '__main__':
     main(sys.argv)
