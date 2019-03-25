@@ -7,18 +7,25 @@ def encode_text_index(df, name):
     return le.classes_
 
 # Encode numeric columns in DataFrame as zscores
-def encode_numeric_zscore(df, cols=None):
+def encode_numeric_zscore(df, cols=None, exclude=[]):
     numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
+
+    print(type(exclude))
 
     if cols == None:
         cols = df.columns
+        cols = cols[df.dtypes.apply(lambda x: x.name).isin(numerics) == True]
 
-    cols = cols[df.dtypes.apply(lambda x: x.name).isin(numerics) == True]
+    if isinstance(exclude, str):
+        exclude = [exclude,]
+
+    cols = list(set(cols) - set(exclude))
+    cols = list(filter(lambda x: None if df[x].std() == 0 else x, cols))
+    cols.sort()
 
     for name in cols:
         df[name] = df[name].transform(lambda x: (x - x.mean()) / x.std())
-
-    return list(cols)
+    return cols
 
 
 # DEPRECATED

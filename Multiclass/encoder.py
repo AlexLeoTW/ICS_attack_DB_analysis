@@ -19,12 +19,13 @@ def encode_numeric_zscore(df, cols=None, exclude=[]):
     if isinstance(exclude, str):
         exclude = [exclude,]
 
-    cols = set(cols) - set(exclude)
+    cols = list(set(cols) - set(exclude))
+    cols = list(filter(lambda x: None if df[x].std() == 0 else x, cols))
+    cols.sort()
 
     for name in cols:
         df[name] = df[name].transform(lambda x: (x - x.mean()) / x.std())
-
-    return list(cols)
+    return cols
 
 
 # DEPRECATED
