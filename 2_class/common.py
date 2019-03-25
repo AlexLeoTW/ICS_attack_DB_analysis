@@ -4,6 +4,10 @@ import numpy as np
 from keras.models import Sequential
 from sklearn import metrics
 
+# locate NaN(s)
+def locateNans(df):
+    return [(x, df.columns[y]) for x,y in np.argwhere(df.values == np.nan)]
+
 # read CSVs in a directory into a single DataFrame
 def batch_read_csv(dirpath='.'):
     files = os.listdir(dirpath)
