@@ -39,7 +39,11 @@ def cleanup(df):
     old_columns = df.columns
 
     def remove(df):
+        # Drop row
         df = df[df.isin([np.nan, np.inf, -np.inf]).any(axis=1) == False]
+        # # Drop column
+        # drop_columns = df.columns[df.isin([np.nan, np.inf, -np.inf]).any(axis=0)]
+        # df.drop(labels=drop_columns, axis=1, inplace=True)
 
     def replace_with_high_std(df, std_increase=10):
         df.dropna(axis=1, how='any', inplace=True)
