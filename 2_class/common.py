@@ -6,7 +6,7 @@ from sklearn import metrics
 
 # locate NaN(s)
 def locateNans(df):
-    return [(x, df.columns[y]) for x,y in np.argwhere(df.values == np.nan)]
+    return [(x, df.columns[y]) for x,y in np.argwhere(np.isnan(df.values))]
 
 # read CSVs in a directory into a single DataFrame
 def batch_read_csv(dirpath='.'):
@@ -102,25 +102,35 @@ def to_xy(df, target):
         # Regression
         return df[result].astype(np.float32), df[target].astype(np.float32)
 
-# Create time sequences of x, y with time_step
-def to_sequences(x, y, step_size):
-    if x.shape[0] != y.shape[0]:
-        return None, None
+# # Create time sequences of x, y with time_step
+def to_sequences(*dfs, step_size=10):
+    # if lengths of elements in dfs(tuple) are the same
+    if len(set(map(lambda x: x.shape[0], dfs))) > 1:
+        return None
 
-    step_count = x.shape[0] - step_size + 1
-    x_seq = np.zeros((step_count, step_size, x.shape[1]))
-    y_seq = np.zeros((step_count, step_size, y.shape[1]))
-    for i in range(step_count):
-        x_seq[i] = x[i:i+step_size]
-        y_seq[i] = y[i:i+step_size]
+    step_count = dfs[0].shape[0] - step_size + 1
+    seqs = []
 
-    return x_seq, y_seq
+    for df in dfs:
+        seq = np.zeros((step_count, step_size, df.shape[1]))
+
+        for i in range(step_count):
+            seq[i] = df[i:i+step_size]
+
+        seqs.append(seq)
+    return seqs[0] if len(seqs) == 1 else seqs
 
 # Caculate: acc_score, reca_score, prec_score, f1_score
+## Deprecated
 def measure_accuracy(model, x_test, y_test):
+    pred_axis = len(y_test.shape)
+    print('pred_axis = {}'.format(pred_axis))
     pred = model.predict(x_test)
-    pred = np.argmax(pred,axis=2)[:,-1]
-    y_eval = np.argmax(y_test,axis=2)[:,-1]
+    print('pred.shape = {}'.format(pred.shape))
+    pred = np.argmax(pred,axis=pred_axis-1)[..., -1]
+    print('pred.shape = {}'.format(pred.shape))
+    y_eval = np.argmax(y_test,axis=pred_axis-1)[...,-1]
+    print('y_eval.shape = {}'.format(y_eval.shape))
 
     acc_score = metrics.accuracy_score(y_eval, pred)
     # print('Accuracy =', acc_score*100)
@@ -140,6 +150,43 @@ def dir_create_if_not_exist(file_path):
     if not os.path.exists(os.path.dirname(file_path)):
         os.makedirs(os.path.dirname(file_path))
 
+def save_model(model, path):
+    if not isinstance(model, Sequential):
+        raise ValueError('"model" must be an instance of keras.model.Sequential')
+    if not isinstance(path, str):
+        raise ValueError('"path" must be an string')
+
+    dir_create_if_not_exist(path)
+    model.save(path)
+
+def save_log(fit_result, path):
+    if not isinstance(path, str):
+        raise ValueError('"path" must be an string')
+
+    dir_create_if_not_exist(path)
+    log_csv = open(path, "w")
+    log_csv.write(pd.DataFrame(fit_result.history).to_csv())
+
+def save_statistics(ann_name, path, entries, drop_duplicates=False):
+    if not isinstance(path, str):
+        raise ValueError('"path" must be an string')
+
+    if os.path.isfile(path):
+        history_statistics = pd.read_csv(path)
+    else:
+        history_statistics = pd.DataFrame(columns=[ann_name] + list(entries.keys()))
+
+    statistics = pd.DataFrame([['ann_name'] + list(entries.values())], columns=[ann_name] + list(entries.keys()))
+    history_statistics = history_statistics.append(statistics, sort=False, ignore_index=True)
+
+    if drop_duplicates:
+        history_statistics.drop_duplicates(subset=drop_duplicates, inplace=True, keep='last')
+
+    dir_create_if_not_exist(path)
+    statistics_csv = open(path, "w")
+    statistics_csv.write(history_statistics.to_csv(index=False))
+
+## Deprecated
 def save_results(ann_name, options, model=None, validation_data=None, fit_result=None, train_time=np.nan):
     if not options.model_path == None:
         if not isinstance(model, Sequential):
