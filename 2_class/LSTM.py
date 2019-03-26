@@ -6,6 +6,7 @@ ANN_NAME = 'LSTM'
 VALIDATION_SPLIT = 0.2
 
 import os, sys, time
+import numpy as np
 import pandas as pd
 import encoder as enc
 import common as common
@@ -15,6 +16,7 @@ from keras.layers.core import Dense
 from keras.layers.recurrent import LSTM
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from sklearn.model_selection import train_test_split
+from sklearn import metrics
 
 options = cmdargv.parse_argv(sys.argv, ANN_NAME)
 
@@ -52,6 +54,8 @@ print('y.shape: {}, {}'.format(y.shape, type(y)))
 print('===== create sequences =====')
 print('step_size = {}'.format(options.step_size))
 x_seq, y_seq = common.to_sequences(x, y, step_size=options.step_size)
+print('x_seq.shape: {}, {}'.format(x_seq.shape, type(x_seq)))
+print('y_seq.shape: {}, {}'.format(y_seq.shape, type(y_seq)))
 
 # Create a test/train split.  20% test
 print('validation_split = {}%'.format(VALIDATION_SPLIT * 100))
@@ -66,9 +70,9 @@ modelCheckpoint = ModelCheckpoint(filepath=options.model_path, monitor=callback_
 common.dir_create_if_not_exist(options.model_path)
 
 model = Sequential()
-model.add(LSTM(units=options.units, input_shape=(options.step_size, x.shape[1]),
+model.add(LSTM(units=options.units, input_shape=(options.step_size, x_train.shape[2]),
     return_sequences = True))
-model.add(Dense(units=y.shape[1], kernel_initializer='normal', activation='softmax'))
+model.add(Dense(units=y_train.shape[2], kernel_initializer='normal', activation='softmax'))
 model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 start_time = time.time()    # -------------------------------------------------┐
 result = model.fit(x_train, y_train, #                                         │
@@ -81,14 +85,64 @@ model.summary()
 
 print('train_time = {}s'.format(train_time))
 
+# measure accuracy
+print('===== measure accuracy =====')
+model = load_model(options.model_path)
+start_time = time.time()    # -------------------------------------------------┐
+pred = model.predict(x_test) #                       val_time                  |
+val_time = time.time() - start_time   # ---------------------------------------┘
+pred = np.argmax(pred, axis=2)[..., -1]
+print('pred.shape = {}'.format(pred.shape))
+y_eval = np.argmax(y_test, axis=2)[..., -1]
+print('y_eval.shape = {}'.format(y_eval.shape))
+
+acc_score = metrics.accuracy_score(y_eval, pred)
+print('Accuracy =', acc_score*100)
+
+reca_score = metrics.recall_score(y_eval, pred)
+print('Recall =', reca_score*100)
+
+prec_score = metrics.precision_score(y_eval, pred)
+print('Precision =', prec_score*100)
+
+f1_score = metrics.f1_score(y_eval, pred)
+print('F-score =', f1_score)
+
 # write files
 print('===== write files =====')
-model = load_model(options.model_path)
-common.save_results(
-    ANN_NAME,
-    options=options,
-    model=model,
-    validation_data=(x_test, y_test),
-    fit_result=result,
-    train_time=train_time
+print('saving model "{}"...'.format(os.path.basename(options.model_path)))
+common.save_model(model= model, path= options.model_path)
+
+print('saving epochs log "{}"...'.format(os.path.basename(options.log_path)))
+common.save_log(fit_result= result, path= options.log_path)
+
+epochs = len(result.history['val_acc'])
+best_epoch = result.history['val_acc'].index(max(result.history['val_acc'])) + 1
+
+print('saving history statistics "{}"...'.format(os.path.basename(options.statistics_path)))
+common.save_statistics(
+    ann_name= ANN_NAME,
+    path= options.statistics_path,
+    entries= {
+        'step_size': options.step_size,
+        'units': options.units,
+        'return_seq': True,
+
+        'acc_score': acc_score,
+        'reca_score': reca_score,
+        'prec_score': prec_score,
+        'f1_score': f1_score,
+
+        'train_time': train_time,
+        'epochs': epochs,
+        'avg_epoch_time': train_time / epochs,
+        'best_epoch': best_epoch,
+        'avg_val_time': val_time / epochs,
+
+        'last_val_loss': result.history['val_loss'][-1],
+        'last_val_acc': result.history['val_acc'][-1],
+        'last_loss': result.history['loss'][-1],
+        'last_acc': result.history['acc'][-1],
+    },
+    drop_duplicates= ['ann_name', 'step_size', 'units', 'return_seq'] if options.drop_duplicates else False
 )

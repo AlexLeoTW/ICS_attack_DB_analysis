@@ -124,6 +124,7 @@ common.save_statistics(
     entries= {
         'step_size': options.step_size,
         'units': options.units,
+        'return_seq': False,
 
         'acc_score': acc_score,
         'reca_score': reca_score,
@@ -141,5 +142,5 @@ common.save_statistics(
         'last_loss': result.history['loss'][-1],
         'last_acc': result.history['acc'][-1],
     },
-    drop_duplicates= ['ann_name', 'step_size', 'units'] if options.drop_duplicates else False
+    drop_duplicates= ['ann_name', 'step_size', 'units', 'return_seq'] if options.drop_duplicates else False
 )

@@ -174,9 +174,9 @@ def save_statistics(ann_name, path, entries, drop_duplicates=False):
     if os.path.isfile(path):
         history_statistics = pd.read_csv(path)
     else:
-        history_statistics = pd.DataFrame(columns=[ann_name] + list(entries.keys()))
+        history_statistics = pd.DataFrame(columns=['ann_name'] + list(entries.keys()))
 
-    statistics = pd.DataFrame([['ann_name'] + list(entries.values())], columns=[ann_name] + list(entries.keys()))
+    statistics = pd.DataFrame([[ann_name] + list(entries.values())], columns=['ann_name'] + list(entries.keys()))
     history_statistics = history_statistics.append(statistics, sort=False, ignore_index=True)
 
     if drop_duplicates:
